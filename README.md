@@ -1,1 +1,3 @@
-# Sing-box-image
+latest:
+
+beta:
