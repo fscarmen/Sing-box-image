@@ -1,4 +1,4 @@
-name: "1.Build latest version"
+name: "Build latest and pre-release"
 
 on:
   workflow_dispatch:
@@ -6,8 +6,11 @@ on:
     - cron: 0 16 * * *
 
 jobs:
-  build-latest-images:
+  Build-latest-version:
     runs-on: ubuntu-latest
+#    strategy:
+#      matrix:
+#        platform: ["linux/amd64", "linux/arm64"]
     name: "Build latest version"
     env:
       TAG: latest
@@ -27,39 +30,133 @@ jobs:
           LATEST=$(sudo wget -qO- "https://api.github.com/repos/SagerNet/sing-box/releases/latest" | awk -F '["v]' '/tag_name/{print $5}')
           echo "Now: $NOW"
           echo "Latest: $LATEST"
+          echo "VERSION=$LATEST" >> $GITHUB_ENV
           if [ "$NOW" != "$LATEST" ]; then
-            sed -i "s/\(${{ env.TAG }}:\).*/\1 $LATEST/" README.md
-            echo "VERSION=$LATEST" >> $GITHUB_ENV
-            echo "DATE=$(date "+%Y/%m/%d")" >> $GITHUB_ENV
-            echo "ARCH=$(uname -m | sed "s#x86_64#amd64#; s#aarch64#arm64#")" >> $GITHUB_ENV
+            echo "IS_RENEW=1" >> $GITHUB_ENV
           fi
 
       - name: Set up QEMU
-        if: ${{ env.VERSION != '' || github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
+        if: ${{ env.IS_RENEW == 1 || github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
         uses: docker/setup-qemu-action@v3.0.0
 
       - name: Set up Docker Buildx
-        if: ${{ env.VERSION != '' || github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
+        if: ${{ env.IS_RENEW == 1 || github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
         uses: docker/setup-buildx-action@v3.0.0
 
       - name: Login to DockerHub
-        if: ${{ env.VERSION != '' || github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
+        if: ${{ env.IS_RENEW == 1 || github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
         uses: docker/login-action@v3.0.0
         with:
           username: ${{ env.DOCKER_USERNAME }}
           password: ${{ env.DOCKER_PASSWORD }}
 
       - name: Push images to Docker hub
-        if: ${{ env.VERSION != '' || github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
+        if: ${{ env.IS_RENEW == 1 || github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
         uses: docker/build-push-action@v5.1.0
         with:
           push: true
+#          platforms: ${{ matrix.platform }}
           platforms: linux/amd64, linux/arm64
           build-args: VERSION=${{ env.VERSION }}
           tags: ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO }}:${{ env.TAG }}
+
+  Build-pre-release:
+    runs-on: ubuntu-latest
+#    strategy:
+#      matrix:
+#        platform: ["linux/amd64", "linux/arm64"]
+    name: "Build pre-release"
+    env:
+      TAG: pre
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      DOCKER_REPO: ${{ secrets.DOCKER_REPO }}
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+
+      - name: Check and Rebuild
+        run: |
+          [ -e README.md ] && NOW=$(awk '/${{ env.TAG }}/{print $NF}' README.md)
+          LATEST=$(sudo wget -qO- "https://api.github.com/repos/SagerNet/sing-box/releases" | awk -F '["v]' '/tag_name.*-.*/{print $5;exit}')
+          echo "Now: $NOW"
+          echo "Latest: $LATEST"
+          echo "VERSION=$LATEST" >> $GITHUB_ENV
+          if [ "$NOW" != "$LATEST" ]; then
+            echo "IS_RENEW=1" >> $GITHUB_ENV
+          fi
+
+      - name: Set up QEMU
+        if: ${{ env.IS_RENEW == 1 || github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
+        uses: docker/setup-qemu-action@v3.0.0
+
+      - name: Set up Docker Buildx
+        if: ${{ env.IS_RENEW == 1 || github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
+        uses: docker/setup-buildx-action@v3.0.0
+
+      - name: Login to DockerHub
+        if: ${{ env.IS_RENEW == 1 || github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
+        uses: docker/login-action@v3.0.0
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_PASSWORD }}
+
+      - name: Push images to Docker hub
+        if: ${{ env.IS_RENEW == 1 || github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
+        uses: docker/build-push-action@v5.1.0
+        with:
+          push: true
+#          platforms: ${{ matrix.platform }}
+          platforms: linux/amd64, linux/arm64
+          build-args: VERSION=${{ env.VERSION }}
+          tags: ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO }}:${{ env.TAG }}
+
+  Mark-image-version:
+    needs: [Build-latest-version, Build-pre-release]
+    runs-on: ubuntu-latest
+    name: "Mark the image version"
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+
+      - name: Check and Mark
+        run: |
+          PRE_NOW=$(awk '/pre/{print $NF}' README.md)
+          RELEASE_NOW=$(awk '/latest/{print $NF}' README.md)
+          PRE_LATEST=$(wget -qO- "https://api.github.com/repos/SagerNet/sing-box/releases" | awk -F '["v]' '/tag_name.*-.*/{print $5;exit}')
+          RELEASE_LATEST=$(wget -qO- "https://api.github.com/repos/SagerNet/sing-box/releases/latest" | awk -F '["v]' '/tag_name/{print $5}')
+          echo "PRE_NOW: $PRE_NOW"
+          echo "PRE_LATEST: $PRE_LATEST"
+          echo "RELEASE_NOW: $RELEASE_NOW"
+          echo "RELEASE_LATEST: $RELEASE_LATEST"
+          if [ "$PRE_NOW" != "$PRE_LATEST" ]; then
+            sed -i "s/\(pre:\).*/\1 $PRE_LATEST/" README.md
+            IS_PRE_RENEW=1
+          fi
+          if [ "$RELEASE_NOW" != "$RELEASE_LATEST" ]; then
+            sed -i "s/\(latest:\).*/\1 $RELEASE_LATEST/" README.md
+            IS_RELEASE_RENEW=1
+          fi
+          if [[ "$IS_PRE_RENEW" = 1 && "$IS_RELEASE_RENEW" = 1 ]]; then 
+            COMMIT="v$PRE_LATEST and v$RELEASE_LATEST"
+            echo "VERSION=$COMMIT" >> $GITHUB_ENV
+            echo "DATE=$(date "+%Y/%m/%d")" >> $GITHUB_ENV
+          elif [ "$IS_PRE_RENEW" = 1 ]; then
+            echo "VERSION=v$PRE_LATEST" >> $GITHUB_ENV
+            echo "DATE=$(date "+%Y/%m/%d")" >> $GITHUB_ENV
+          elif [ "$IS_RELEASE_RENEW" = 1 ]; then
+            echo "VERSION=v$RELEASE_LATEST" >> $GITHUB_ENV
+            echo "DATE=$(date "+%Y/%m/%d")" >> $GITHUB_ENV
+          fi
 
       - name: Upload to repository
         uses: stefanzweifel/git-auto-commit-action@v4.16.0
         if: ${{ env.VERSION != '' }}
         with:
-          commit_message: Build latest to v${{ env.VERSION }} by Github Actions, ${{ env.DATE }}
+          commit_message: Build to ${{ env.VERSION }} by Github Actions, ${{ env.DATE }}
