@@ -1,3 +1,3 @@
-latest: 1.8.9
+latest: 1.8.10
 
-pre: 1.9.0-beta.17
+pre: 1.9.0-rc.1
