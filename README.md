@@ -1,3 +1,3 @@
-latest: 
+latest: 1.8.13
 
-pre: 
+pre: 1.9.0-rc.18
