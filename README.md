@@ -1,3 +1,3 @@
-latest: 1.9.3
+latest: 1.9.4
 
-pre: 1.10.0-alpha.29
+pre: 1.10.0-beta.2
