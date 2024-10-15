@@ -1,3 +1,3 @@
-latest: 1.9.7
+latest: 1.10.0
 
 pre: 1.10.0-rc.1
