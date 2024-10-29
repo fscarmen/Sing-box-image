@@ -1,3 +1,3 @@
-latest: 
+latest: 1.10.1
 
-pre: 
+pre: 1.11.0-alpha.1
