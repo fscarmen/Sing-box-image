@@ -1,3 +1,3 @@
-latest: 1.10.6
+latest: 1.10.7
 
-pre: 1.11.0-beta.22
+pre: 1.11.0-beta.23
