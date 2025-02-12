@@ -1,3 +1,3 @@
 latest: 1.11.3
 
-pre: 1.12.0-alpha.5
+pre: 1.12.0-alpha.6
