@@ -55,9 +55,10 @@ jobs:
         uses: docker/build-push-action@v6.16.0
         with:
           push: true
-#          platforms: ${{ matrix.platform }}
           platforms: linux/amd64, linux/arm64
-          build-args: VERSION=${{ env.VERSION }}
+          build-args: |
+            VERSION=${{ env.VERSION }}
+            SUFFIX=
           tags: ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO }}:${{ env.TAG }}
 
   Build-pre-release:
@@ -109,9 +110,10 @@ jobs:
         uses: docker/build-push-action@v6.16.0
         with:
           push: true
-#          platforms: ${{ matrix.platform }}
           platforms: linux/amd64, linux/arm64
-          build-args: VERSION=${{ env.VERSION }}
+          build-args: |
+            VERSION=${{ env.VERSION }}
+            SUFFIX=-musl
           tags: ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO }}:${{ env.TAG }}
 
   Mark-image-version:
