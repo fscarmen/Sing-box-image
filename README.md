@@ -1,3 +1,3 @@
-latest: 1.12.14
+latest: 1.12.15
 
-pre: 1.13.0-alpha.36
+pre: 1.13.0-beta.1
