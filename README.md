@@ -1,3 +1,3 @@
-latest: 1.13.18
+latest: 1.13.19
 
-pre: 1.14.0-beta.15
+pre: 1.14.0-beta.17
